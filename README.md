@@ -84,6 +84,7 @@ As pastas de implementação serão criadas à medida que cada componente for in
 
 - [Visão e âmbito](docs/01-visao-e-ambito.md)
 - [Estado atual do protótipo](docs/02-estado-atual-prototipo.md)
+- [Inventário do firmware original](firmware/legacy/README.md)
 
 ## Próximos marcos
 
