@@ -427,3 +427,21 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# === Apiario Tech ===
+# Segredos e ambiente
+.env
+.env.local
+
+# Cliente Prisma gerado (regenerar com: npm run db:generate)
+backend/src/generated/
+
+# Build do frontend
+frontend/dist/
+
+# Workspace da ferramenta de IA
+.aicoding-chat-workspace
+
+# Dependencias
+node_modules/
+
