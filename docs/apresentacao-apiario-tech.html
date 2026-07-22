@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Apiário Tech — Documento de Apresentação</title>
+<style>
+  @page { margin: 20mm 18mm; size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a2e; margin: 0; padding: 0; }
+  .cover { page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 90vh; text-align: center; }
+  .cover h1 { font-size: 32pt; color: #16213e; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; color: #0f3460; margin-bottom: 40px; }
+  .cover .meta { font-size: 10pt; color: #555; line-height: 2; }
+  .cover .badge { display: inline-block; background: #e94560; color: #fff; padding: 6px 18px; border-radius: 20px; font-size: 10pt; font-weight: 600; margin-top: 30px; }
+  h1 { font-size: 20pt; color: #16213e; border-bottom: 3px solid #e94560; padding-bottom: 6px; margin-top: 40px; }
+  h2 { font-size: 14pt; color: #0f3460; margin-top: 28px; }
+  h3 { font-size: 12pt; color: #16213e; margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 10pt; }
+  th { background: #16213e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #ddd; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .status-done { color: #27ae60; font-weight: 600; }
+  .status-progress { color: #f39c12; font-weight: 600; }
+  .status-pending { color: #e74c3c; font-weight: 600; }
+  .highlight-box { background: #f0f4ff; border-left: 4px solid #0f3460; padding: 14px 18px; margin: 16px 0; border-radius: 4px; }
+  .arch-box { background: #fafafa; border: 1px solid #ddd; padding: 16px; margin: 16px 0; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 9.5pt; white-space: pre-wrap; line-height: 1.5; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .page-break { page-break-before: always; }
+  .footer { margin-top: 50px; padding-top: 12px; border-top: 1px solid #ccc; font-size: 9pt; color: #777; text-align: center; }
+  .toc { margin: 20px 0; }
+  .toc li { margin-bottom: 6px; }
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .kpi-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; text-align: center; }
+  .kpi-card .number { font-size: 22pt; font-weight: 700; color: #0f3460; }
+  .kpi-card .label { font-size: 9pt; color: #666; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+  <h1>Apiário Tech</h1>
+  <div class="subtitle">Plataforma IoT para Monitorização e Gestão de Apiários</div>
+  <div class="badge">Documento de Apresentação</div>
+  <div class="meta">
+    <strong>Responsável:</strong> Patrícia Silva<br>
+    <strong>Versão:</strong> 1.0<br>
+    <strong>Data:</strong> 22 de julho de 2026<br>
+    <strong>Classificação:</strong> Confidencial — Uso interno<br>
+    <strong>Repositório:</strong> github.com/patricia-sousa-silva/apiario-tech
+  </div>
+</div>
+
+<!-- ÍNDICE -->
+<h1>Índice</h1>
+<ol class="toc">
+  <li>Sumário Executivo</li>
+  <li>Contexto e Problema</li>
+  <li>Visão do Produto</li>
+  <li>Arquitetura do Sistema</li>
+  <li>Stack Tecnológica</li>
+  <li>Modelo de Dados</li>
+  <li>Funcionalidades Previstas (MVP)</li>
+  <li>Contrato de Telemetria</li>
+  <li>Ponto de Situação Atual</li>
+  <li>Trabalho em Falta</li>
+  <li>Fases do Projeto</li>
+  <li>Riscos e Mitigação</li>
+  <li>Segurança</li>
+  <li>Próximos Passos</li>
+</ol>
+
+<!-- 1. SUMÁRIO EXECUTIVO -->
+<h1 class="page-break">1. Sumário Executivo</h1>
+<p>O <strong>Apiário Tech</strong> é uma plataforma IoT de monitorização apícola que combina sensores instalados no apiário, recolha local através de microcontrolador ESP32 e uma aplicação web para transformar leituras técnicas em informação compreensível e útil para a gestão de colmeias.</p>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="number">3</div><div class="label">Componentes principais<br>(Firmware, Backend, Web)</div></div>
+  <div class="kpi-card"><div class="number">8</div><div class="label">Modelos de dados<br>na base de dados</div></div>
+  <div class="kpi-card"><div class="number">20+</div><div class="label">Endpoints REST<br>implementados</div></div>
+  <div class="kpi-card"><div class="number">6</div><div class="label">Sketches de teste<br>de firmware</div></div>
+</div>
+
+<p>O projeto encontra-se em <strong>fase de desenvolvimento ativo</strong>, com o backend e a estrutura base do frontend funcionais, e o firmware de teste preparado para validação em bancada.</p>
+
+<!-- 2. CONTEXTO E PROBLEMA -->
+<h1 class="page-break">2. Contexto e Problema</h1>
+<p>A avaliação do estado de uma colmeia depende habitualmente de visitas presenciais ao apiário e de observações realizadas durante as inspeções. Entre visitas, alterações de temperatura, humidade, peso ou funcionamento do equipamento podem passar despercebidas.</p>
+
+<h3>Problemas identificados</h3>
+<ul>
+  <li>Registos manuais dispersos e difíceis de analisar;</li>
+  <li>Impossibilidade de detetar anomalias entre visitas;</li>
+  <li>Ausência de histórico estruturado de leituras e intervenções;</li>
+  <li>Não existe ligação permanente à Internet no apiário;</li>
+  <li>Necessidade de autonomia energética e de armazenamento local.</li>
+</ul>
+
+<h3>Contexto do piloto</h3>
+<table>
+  <tr><th>Parâmetro</th><th>Valor</th></tr>
+  <tr><td>Número de colmeias</td><td>2</td></tr>
+  <tr><td>Controlador</td><td>ESP32</td></tr>
+  <tr><td>Alimentação</td><td>Painel solar + bateria</td></tr>
+  <tr><td>Conectividade</td><td>Não permanente (importação CSV manual)</td></tr>
+</table>
+
+<!-- 3. VISÃO DO PRODUTO -->
+<h1 class="page-break">3. Visão do Produto</h1>
+<p>O Apiário Tech permitirá ao utilizador responder rapidamente a perguntas como:</p>
+<ul>
+  <li>Qual é o estado atual de cada colmeia?</li>
+  <li>Como evoluíram a temperatura, a humidade e o peso?</li>
+  <li>Existem leituras anómalas que justificam atenção?</li>
+  <li>Que inspeções, alimentações ou tratamentos foram realizados?</li>
+  <li>O dispositivo está a recolher dados de forma regular?</li>
+</ul>
+
+<h3>Objetivos principais</h3>
+<ul>
+  <li>Centralizar a informação relativa aos apiários e colmeias;</li>
+  <li>Recolher e conservar telemetria com data e hora fiáveis;</li>
+  <li>Apresentar o estado atual e o histórico de forma clara;</li>
+  <li>Apoiar o acompanhamento através de alertas básicos;</li>
+  <li>Manter registo cronológico das intervenções;</li>
+  <li>Funcionar durante falhas de Internet e interrupções de energia;</li>
+  <li>Permitir evolução gradual sem reconstruir a solução.</li>
+</ul>
+
+<h3>Objetivos de longo prazo</h3>
+<ul>
+  <li>Transmissão automática via 4G, LoRa ou Wi-Fi;</li>
+  <li>Alertas avançados baseados em padrões históricos;</li>
+  <li>Deteção e acompanhamento da Vespa velutina;</li>
+  <li>Modelos de inteligência artificial validados.</li>
+</ul>
+
+<!-- 4. ARQUITETURA -->
+<h1 class="page-break">4. Arquitetura do Sistema</h1>
+<div class="arch-box">┌─────────────────────────────────────────────────────────────────┐
+│                        APIÁRIO TECH                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────┐     ┌──────────────┐     ┌───────────────────┐   │
+│  │ SENSORES │────▶│    ESP32     │────▶│  microSD (CSV)    │   │
+│  │ BME280   │     │  Firmware    │     │  Armazenamento    │   │
+│  │ DS18B20  │     │  Arduino C++ │     │  Local            │   │
+│  │ HX711    │     └──────────────┘     └────────┬──────────┘   │
+│  │ RTC/OLED │                                   │              │
+│  └──────────┘                          Importação manual       │
+│                                                │              │
+│                                                ▼              │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              BACKEND (Node.js + Express)                  │  │
+│  │  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌──────────┐  │  │
+│  │  │  Auth   │  │Telemetry │  │ Alerts  │  │  CRUD    │  │  │
+│  │  │  JWT    │  │ Import   │  │ Engine  │  │Apiaries  │  │  │
+│  │  └─────────┘  └──────────┘  └─────────┘  └──────────┘  │  │
+│  └──────────────────────────┬───────────────────────────────┘  │
+│                             │                                   │
+│                             ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              PostgreSQL (Prisma ORM)                      │  │
+│  │  Users │ Apiaries │ Hives │ Devices │ Readings │ Alerts  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                             │                                   │
+│                             ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │         FRONTEND (React + Vite + TypeScript)             │  │
+│  │  Login │ Dashboard │ Histórico │ Alertas │ Intervenções  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+<h3>Fluxo de dados</h3>
+<ol>
+  <li>Sensores recolhem dados ambientais e do ninho;</li>
+  <li>ESP32 valida, formata e grava em CSV no microSD;</li>
+  <li>Utilizador importa o ficheiro CSV para a plataforma;</li>
+  <li>Backend valida, deduplica e persiste na base de dados;</li>
+  <li>Frontend apresenta dashboard, histórico e alertas.</li>
+</ol>
+
+<!-- 5. STACK TECNOLÓGICA -->
+<h1 class="page-break">5. Stack Tecnológica</h1>
+<table>
+  <tr><th>Camada</th><th>Tecnologia</th><th>Justificação</th></tr>
+  <tr><td>Backend</td><td>Node.js + Express 5 + TypeScript</td><td>Ecossistema maduro, tipagem forte, async nativo</td></tr>
+  <tr><td>ORM</td><td>Prisma 7</td><td>Type-safe, migrations automáticas, adapter pattern</td></tr>
+  <tr><td>Base de dados</td><td>PostgreSQL 16</td><td>Fiabilidade, JSON nativo, full-text search</td></tr>
+  <tr><td>Autenticação</td><td>JWT + bcrypt</td><td>Stateless, seguro, padrão da indústria</td></tr>
+  <tr><td>Validação</td><td>Zod v4</td><td>Schema-first, integração com TypeScript</td></tr>
+  <tr><td>Frontend</td><td>React 19 + Vite + TypeScript</td><td>Componentização, HMR rápido, tipagem</td></tr>
+  <tr><td>Routing</td><td>React Router</td><td>SPA routing com proteção de rotas</td></tr>
+  <tr><td>HTTP Client</td><td>Axios</td><td>Interceptors para token automático</td></tr>
+  <tr><td>Gráficos</td><td>Recharts</td><td>Baseado em React, responsivo</td></tr>
+  <tr><td>Firmware</td><td>Arduino C++ (ESP32)</td><td>Compatível com bibliotecas de sensores</td></tr>
+  <tr><td>Upload CSV</td><td>Multer + csv-parse</td><td>Processamento em stream, memória eficiente</td></tr>
+</table>
+
+<!-- 6. MODELO DE DADOS -->
+<h1 class="page-break">6. Modelo de Dados</h1>
+<p>O schema da base de dados inclui <strong>8 modelos</strong> interligados:</p>
+
+<table>
+  <tr><th>Modelo</th><th>Responsabilidade</th><th>Relações</th></tr>
+  <tr><td><strong>User</strong></td><td>Utilizadores e autenticação (email, password hash, role)</td><td>1:N → Apiary</td></tr>
+  <tr><td><strong>Apiary</strong></td><td>Apiários (nome, localização, coordenadas GPS)</td><td>N:1 → User; 1:N → Hive</td></tr>
+  <tr><td><strong>Hive</strong></td><td>Colmeias (nome, posição, estado ativo)</td><td>N:1 → Apiary; 1:N → Device, Reading, Alert, Intervention</td></tr>
+  <tr><td><strong>Device</strong></td><td>Dispositivos ESP32 (ID único, modelo, firmware)</td><td>N:1 → Hive; 1:N → Reading</td></tr>
+  <tr><td><strong>TelemetryReading</strong></td><td>Leituras de telemetria (10 métricas + validação)</td><td>N:1 → Device, Hive</td></tr>
+  <tr><td><strong>AlertRule</strong></td><td>Regras de alerta (métrica, operador, limiar)</td><td>1:N → Alert</td></tr>
+  <tr><td><strong>Alert</strong></td><td>Alertas gerados (mensagem, valor, reconhecimento)</td><td>N:1 → AlertRule, Hive</td></tr>
+  <tr><td><strong>Intervention</strong></td><td>Intervenções (inspeção, alimentação, tratamento, colheita)</td><td>N:1 → Hive</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>Regra de deduplicação:</strong> A combinação <code>(device_id, timestamp)</code> é única. Importações repetidas do mesmo ficheiro não criam duplicados.
+</div>
+
+<!-- 7. FUNCIONALIDADES -->
+<h1 class="page-break">7. Funcionalidades Previstas (MVP)</h1>
+<table>
+  <tr><th>Área</th><th>Funcionalidade</th><th>Estado</th></tr>
+  <tr><td>Acesso</td><td>Registo e autenticação de utilizadores (JWT)</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Organização</td><td>Gestão de apiários (CRUD completo)</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Organização</td><td>Gestão de colmeias (CRUD completo)</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Dispositivos</td><td>Registo e gestão de dispositivos ESP32</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Telemetria</td><td>Importação CSV com validação e deduplicação</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Telemetria</td><td>Consulta de histórico com filtros e paginação</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Telemetria</td><td>Última leitura válida por dispositivo</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Alertas</td><td>Regras de alerta configuráveis (CRUD)</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Alertas</td><td>Listagem e reconhecimento de alertas</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Intervenções</td><td>Registo de inspeções, alimentações, tratamentos</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Frontend</td><td>Página de Login e Registo</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Frontend</td><td>Dashboard com última leitura</td><td class="status-done">✓ Implementado</td></tr>
+  <tr><td>Frontend</td><td>Histórico com gráficos interativos</td><td class="status-progress">◐ Em desenvolvimento</td></tr>
+  <tr><td>Frontend</td><td>Página de importação CSV</td><td class="status-progress">◐ Em desenvolvimento</td></tr>
+  <tr><td>Frontend</td><td>Gestão visual de colmeias</td><td class="status-progress">◐ Em desenvolvimento</td></tr>
+  <tr><td>Frontend</td><td>Página de intervenções</td><td class="status-progress">◐ Em desenvolvimento</td></tr>
+  <tr><td>Firmware</td><td>Firmware base integrado (todos os sensores)</td><td class="status-pending">○ Pendente</td></tr>
+  <tr><td>Firmware</td><td>Testes de bancada documentados</td><td class="status-pending">○ Pendente</td></tr>
+  <tr><td>Comunicação</td><td>Envio automático via 4G/LoRa/Wi-Fi</td><td class="status-pending">○ Fase futura</td></tr>
+</table>
+
+<!-- 8. CONTRATO DE TELEMETRIA -->
+<h1 class="page-break">8. Contrato de Telemetria (v1.0)</h1>
+<p>Formato único de telemetria utilizado tanto na exportação CSV pelo ESP32 como na futura receção automática via API.</p>
+
+<h3>Colunas do CSV</h3>
+<table>
+  <tr><th>#</th><th>Coluna</th><th>Tipo</th><th>Unidade</th><th>Obrigatório</th></tr>
+  <tr><td>1</td><td>device_id</td><td>string</td><td>—</td><td>Sim</td></tr>
+  <tr><td>2</td><td>timestamp</td><td>datetime</td><td>ISO 8601 UTC</td><td>Sim</td></tr>
+  <tr><td>3</td><td>temp_ext_c</td><td>float</td><td>°C</td><td>Sim</td></tr>
+  <tr><td>4</td><td>humidity_pct</td><td>float</td><td>%</td><td>Sim</td></tr>
+  <tr><td>5</td><td>pressure_hpa</td><td>float</td><td>hPa</td><td>Sim</td></tr>
+  <tr><td>6</td><td>temp_nest1_c</td><td>float</td><td>°C</td><td>Sim</td></tr>
+  <tr><td>7</td><td>temp_nest2_c</td><td>float</td><td>°C</td><td>Sim</td></tr>
+  <tr><td>8</td><td>weight_g</td><td>integer</td><td>g</td><td>Não</td></tr>
+  <tr><td>9</td><td>battery_mv</td><td>integer</td><td>mV</td><td>Não</td></tr>
+  <tr><td>10</td><td>status_flags</td><td>string</td><td>—</td><td>Sim</td></tr>
+</table>
+
+<h3>Códigos de estado</h3>
+<table>
+  <tr><th>Código</th><th>Significado</th></tr>
+  <tr><td>OK</td><td>Todos os sensores funcionaram normalmente</td></tr>
+  <tr><td>BME280_FAIL</td><td>BME280 não respondeu</td></tr>
+  <tr><td>BME280_STALE</td><td>Leitura não variou desde o ciclo anterior</td></tr>
+  <tr><td>DS18B20_1_FAIL</td><td>Sonda do ninho 1 não respondeu</td></tr>
+  <tr><td>DS18B20_2_FAIL</td><td>Sonda do ninho 2 não respondeu</td></tr>
+  <tr><td>RTC_FAIL</td><td>RTC não disponível</td></tr>
+  <tr><td>SD_FAIL</td><td>Erro de escrita no microSD</td></tr>
+  <tr><td>HX711_FAIL</td><td>Leitura do peso falhou</td></tr>
+  <tr><td>BATTERY_LOW</td><td>Tensão da bateria abaixo do limiar</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>Valor sentinela:</strong> <code>-127.00</code> indica falha de sensor. O backend rejeita valores sentinelas como medições válidas e marca a leitura com o estado de falha correspondente.
+</div>
+
+<!-- 9. PONTO DE SITUAÇÃO -->
+<h1 class="page-break">9. Ponto de Situação Atual</h1>
+
+<h3>Backend — <span class="status-done">Funcional</span></h3>
+<ul>
+  <li>API REST completa com 20+ endpoints;</li>
+  <li>Autenticação JWT com registo e login;</li>
+  <li>CRUD de apiários, colmeias, dispositivos e intervenções;</li>
+  <li>Importação CSV com validação, deduplicação e relatório de erros;</li>
+  <li>Motor de regras de alerta;</li>
+  <li>Base de dados PostgreSQL com migrations e seed;</li>
+  <li>Compilação TypeScript sem erros.</li>
+</ul>
+
+<h3>Frontend — <span class="status-progress">Parcialmente funcional</span></h3>
+<ul>
+  <li>Estrutura React + Vite + TypeScript configurada;</li>
+  <li>Sistema de autenticação com Context API e persistência;</li>
+  <li>Páginas de Login e Registo funcionais;</li>
+  <li>Dashboard com última leitura de telemetria;</li>
+  <li>Layout com navegação e menu de utilizador;</li>
+  <li>Páginas de histórico, importação e intervenções em desenvolvimento.</li>
+</ul>
+
+<h3>Firmware — <span class="status-pending">Preparado para teste</span></h3>
+<ul>
+  <li>6 sketches de teste isolados criados (BME280, DS18B20, OLED, RTC, microSD, HX711);</li>
+  <li>Código original preservado e inventariado (3 versões);</li>
+  <li>Contrato de telemetria v1.0 definido;</li>
+  <li>Firmware base integrado ainda não desenvolvido (aguarda validação em bancada).</li>
+</ul>
+
+<h3>Documentação — <span class="status-done">Completa para a fase atual</span></h3>
+<ul>
+  <li>Visão e âmbito do produto;</li>
+  <li>Estado atual do protótipo e inventário de hardware;</li>
+  <li>Contrato de telemetria v1.0;</li>
+  <li>Inventário do firmware original;</li>
+  <li>Plano de validação em bancada (11 testes).</li>
+</ul>
+
+<!-- 10. TRABALHO EM FALTA -->
+<h1 class="page-break">10. Trabalho em Falta</h1>
+
+<h3>Frontend (curto prazo)</h3>
+<table>
+  <tr><th>Tarefa</th><th>Prioridade</th><th>Complexidade</th></tr>
+  <tr><td>Página de histórico com gráficos Recharts</td><td>Alta</td><td>Média</td></tr>
+  <tr><td>Página de importação CSV com upload e feedback</td><td>Alta</td><td>Média</td></tr>
+  <tr><td>Gestão visual de colmeias e dispositivos</td><td>Média</td><td>Média</td></tr>
+  <tr><td>Página de intervenções com formulário</td><td>Média</td><td>Baixa</td></tr>
+  <tr><td>Página de alertas e regras</td><td>Média</td><td>Média</td></tr>
+  <tr><td>Design responsivo e melhorias de UX</td><td>Baixa</td><td>Média</td></tr>
+</table>
+
+<h3>Firmware (médio prazo)</h3>
+<table>
+  <tr><th>Tarefa</th><th>Prioridade</th><th>Dependência</th></tr>
+  <tr><td>Validação em bancada dos 6 sensores</td><td>Crítica</td><td>Acesso ao hardware</td></tr>
+  <tr><td>Resolução do problema do microSD</td><td>Crítica</td><td>Teste isolado</td></tr>
+  <tr><td>Firmware base integrado</td><td>Alta</td><td>Sensores validados</td></tr>
+  <tr><td>Calibração da balança (HX711)</td><td>Alta</td><td>Montagem física</td></tr>
+  <tr><td>Teste contínuo de bancada (72h+)</td><td>Alta</td><td>Firmware integrado</td></tr>
+</table>
+
+<h3>Infraestrutura (médio/longo prazo)</h3>
+<table>
+  <tr><th>Tarefa</th><th>Prioridade</th><th>Nota</th></tr>
+  <tr><td>Testes automatizados (unitários e integração)</td><td>Alta</td><td>Backend e frontend</td></tr>
+  <tr><td>Deploy em produção (cloud ou VPS)</td><td>Média</td><td>Após MVP estável</td></tr>
+  <tr><td>Comunicação remota (4G/LoRa/Wi-Fi)</td><td>Baixa</td><td>Fase futura</td></tr>
+  <tr><td>Aplicação móvel ou PWA</td><td>Baixa</td><td>Fase futura</td></tr>
+</table>
+
+<!-- 11. FASES -->
+<h1 class="page-break">11. Fases do Projeto</h1>
+<table>
+  <tr><th>Fase</th><th>Entrega principal</th><th>Estado</th></tr>
+  <tr><td>0 — Consolidação</td><td>Inventário, código existente, documentação</td><td class="status-done">✓ Concluída</td></tr>
+  <tr><td>1 — Firmware base</td><td>Sensores, OLED, RTC e microSD estáveis</td><td class="status-pending">○ Pendente (aguarda bancada)</td></tr>
+  <tr><td>2 — Peso</td><td>Balança calibrada e testada</td><td class="status-pending">○ Pendente</td></tr>
+  <tr><td>3 — Contrato de dados</td><td>Telemetria e CSV definidos</td><td class="status-done">✓ Concluída</td></tr>
+  <tr><td>4 — Núcleo web</td><td>Utilizadores, apiários, colmeias, BD</td><td class="status-done">✓ Concluída</td></tr>
+  <tr><td>5 — Percurso completo</td><td>ESP32 → CSV → importação → dashboard</td><td class="status-progress">◐ Parcial (backend pronto)</td></tr>
+  <tr><td>6 — Operação</td><td>Histórico, gráficos, alertas, intervenções</td><td class="status-progress">◐ Em desenvolvimento</td></tr>
+  <tr><td>7 — Validação</td><td>Segurança, testes, piloto prolongado</td><td class="status-pending">○ Pendente</td></tr>
+</table>
+
+<!-- 12. RISCOS -->
+<h1 class="page-break">12. Riscos e Mitigação</h1>
+<table>
+  <tr><th>Risco</th><th>Impacto</th><th>Probabilidade</th><th>Mitigação</th></tr>
+  <tr><td>microSD instável</td><td>Perda de telemetria local</td><td>Alta</td><td>Teste isolado antes de integrar; cartão de qualidade industrial</td></tr>
+  <tr><td>Leituras congeladas (BME280)</td><td>Decisões com dados inválidos</td><td>Média</td><td>Deteção de stale data; validação temporal</td></tr>
+  <tr><td>Falha de energia</td><td>Corrupção de dados</td><td>Média</td><td>Escrita segura; teste de reinícios</td></tr>
+  <tr><td>Ausência de Internet</td><td>Atraso na consulta</td><td>Certa</td><td>Armazenamento local + importação CSV</td></tr>
+  <tr><td>Deriva da balança</td><td>Peso pouco fiável</td><td>Média</td><td>Calibração regular; testes com cargas conhecidas</td></tr>
+  <tr><td>Crescimento do âmbito</td><td>Atraso no MVP</td><td>Média</td><td>Funcionalidades futuras fora do MVP</td></tr>
+  <tr><td>Acesso indevido</td><td>Exposição de dados</td><td>Baixa</td><td>JWT, bcrypt, validação Zod, HTTPS</td></tr>
+</table>
+
+<!-- 13. SEGURANÇA -->
+<h1 class="page-break">13. Segurança</h1>
+<ul>
+  <li><strong>Autenticação:</strong> JWT com expiração configurável;</li>
+  <li><strong>Palavras-passe:</strong> Hash com bcrypt (10 rounds);</li>
+  <li><strong>Validação:</strong> Todos os inputs validados com Zod antes de processar;</li>
+  <li><strong>Segredos:</strong> Nunca no código-fonte; variáveis de ambiente (.env);</li>
+  <li><strong>CORS:</strong> Configurado para origens autorizadas;</li>
+  <li><strong>Dados:</strong> Leituras não são eliminadas sem rastreabilidade;</li>
+  <li><strong>Autorização:</strong> Cada utilizador acede apenas aos seus apiários.</li>
+</ul>
+
+<!-- 14. PRÓXIMOS PASSOS -->
+<h1 class="page-break">14. Próximos Passos</h1>
+
+<h3>Imediato (1-2 semanas)</h3>
+<ol>
+  <li>Completar páginas do frontend (histórico com gráficos, importação CSV);</li>
+  <li>Push do código para o GitHub;</li>
+  <li>Testes de integração básicos.</li>
+</ol>
+
+<h3>Curto prazo (2-4 semanas)</h3>
+<ol>
+  <li>Validação em bancada dos sensores (junto ao ESP32);</li>
+  <li>Resolução do problema do microSD;</li>
+  <li>Desenvolvimento do firmware base integrado;</li>
+  <li>Primeiro percurso completo: ESP32 → CSV → Backend → Dashboard.</li>
+</ol>
+
+<h3>Médio prazo (1-3 meses)</h3>
+<ol>
+  <li>Calibração da balança;</li>
+  <li>Teste contínuo de bancada (72h+);</li>
+  <li>Testes automatizados;</li>
+  <li>Deploy em ambiente de produção;</li>
+  <li>Piloto prolongado nas 2 colmeias.</li>
+</ol>
+
+<div class="footer">
+  <p><strong>Apiário Tech</strong> — Documento de Apresentação v1.0</p>
+  <p>Patrícia Silva | 22 de julho de 2026 | Confidencial</p>
+</div>
+
+</body>
+</html>

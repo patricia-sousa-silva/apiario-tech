@@ -1,0 +1,15 @@
+{
+  "name": "apiario-tech-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Utilitários do Apiário Tech (geração do PDF de apresentação)",
+  "scripts": {
+    "pdf": "node generate-pdf.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.3.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.3.0": true
+  }
+}
