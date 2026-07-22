@@ -442,6 +442,12 @@ frontend/dist/
 # Workspace da ferramenta de IA
 .aicoding-chat-workspace
 
+# Ficheiros de ferramentas de IA (skills)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+
 # Dependencias
 node_modules/
 

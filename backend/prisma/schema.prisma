@@ -1,0 +1,204 @@
+// Apiário Tech — Schema da base de dados
+// PostgreSQL + Prisma
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================
+// UTILIZADORES E AUTENTICAÇÃO
+// =====================================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(APIARIST)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  apiaries Apiary[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  APIARIST
+}
+
+// =====================================================
+// APIÁRIOS E COLMEIAS
+// =====================================================
+
+model Apiary {
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  latitude  Float?
+  longitude Float?
+  notes     String?
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+  hives Hive[]
+
+  @@map("apiaries")
+}
+
+model Hive {
+  id        String   @id @default(uuid())
+  name      String
+  apiaryId  String   @map("apiary_id")
+  position  String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  apiary       Apiary            @relation(fields: [apiaryId], references: [id])
+  devices      Device[]
+  readings     TelemetryReading[]
+  alerts       Alert[]
+  interventions Intervention[]
+
+  @@map("hives")
+}
+
+// =====================================================
+// DISPOSITIVOS
+// =====================================================
+
+model Device {
+  id          String    @id @default(uuid())
+  deviceId    String    @unique @map("device_id") // ex.: ESP32-001
+  model       String?
+  firmwareVer String?   @map("firmware_ver")
+  hiveId      String?   @map("hive_id")
+  active      Boolean   @default(true)
+  lastSeenAt  DateTime? @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  hive     Hive?              @relation(fields: [hiveId], references: [id])
+  readings TelemetryReading[]
+
+  @@map("devices")
+}
+
+// =====================================================
+// TELEMETRIA
+// =====================================================
+
+model TelemetryReading {
+  id           String   @id @default(uuid())
+  deviceId     String   @map("device_id")
+  hiveId       String?  @map("hive_id")
+  timestamp    DateTime
+  tempExtC     Float?   @map("temp_ext_c")
+  humidityPct  Float?   @map("humidity_pct")
+  pressureHpa  Float?   @map("pressure_hpa")
+  tempNest1C   Float?   @map("temp_nest1_c")
+  tempNest2C   Float?   @map("temp_nest2_c")
+  weightG      Int?     @map("weight_g")
+  batteryMv    Int?     @map("battery_mv")
+  statusFlags  String   @default("OK") @map("status_flags")
+  valid        Boolean  @default(true)
+  invalidReason String? @map("invalid_reason")
+  importedAt   DateTime @default(now()) @map("imported_at")
+
+  device Device @relation(fields: [deviceId], references: [deviceId])
+  hive   Hive?  @relation(fields: [hiveId], references: [id])
+
+  @@unique([deviceId, timestamp])
+  @@index([hiveId, timestamp])
+  @@index([timestamp])
+  @@map("telemetry_readings")
+}
+
+// =====================================================
+// ALERTAS
+// =====================================================
+
+model AlertRule {
+  id          String       @id @default(uuid())
+  name        String
+  metric      AlertMetric
+  operator    AlertOperator
+  threshold   Float
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  alerts Alert[]
+
+  @@map("alert_rules")
+}
+
+enum AlertMetric {
+  TEMP_EXT
+  TEMP_NEST1
+  TEMP_NEST2
+  HUMIDITY
+  PRESSURE
+  WEIGHT
+  BATTERY
+}
+
+enum AlertOperator {
+  GT
+  LT
+  GTE
+  LTE
+}
+
+model Alert {
+  id          String   @id @default(uuid())
+  ruleId      String   @map("rule_id")
+  hiveId      String?  @map("hive_id")
+  readingId   String?  @map("reading_id")
+  message     String
+  value       Float?
+  acknowledged Boolean @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rule AlertRule @relation(fields: [ruleId], references: [id])
+  hive Hive?     @relation(fields: [hiveId], references: [id])
+
+  @@map("alerts")
+}
+
+// =====================================================
+// INTERVENÇÕES
+// =====================================================
+
+model Intervention {
+  id        String             @id @default(uuid())
+  hiveId    String             @map("hive_id")
+  type      InterventionType
+  date      DateTime
+  notes     String?
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  hive Hive @relation(fields: [hiveId], references: [id])
+
+  @@map("interventions")
+}
+
+enum InterventionType {
+  INSPECTION
+  FEEDING
+  TREATMENT
+  HARVEST
+  OBSERVATION
+  MAINTENANCE
+}
