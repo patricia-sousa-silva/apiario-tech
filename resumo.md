@@ -1,14 +1,14 @@
 # Resumo do Projeto Apiário Tech
 
 > Documento de resumo com todos os passos realizados até ao momento.
-> Última atualização: 22 de julho de 2026 (v0.4.0)
+> Última atualização: 22 de julho de 2026 (v0.5.0)
 
 ---
 
 ## Estado geral
 
-**Fase atual:** Plataforma web com UX avançada — tempo real, modo escuro, alertas visuais e validação em browser
-**Versão documental:** 0.4.0
+**Fase atual:** Plataforma web avançada — análise de dados, notificações, pesquisa global, acessibilidade e PWA instalável
+**Versão documental:** 0.5.0
 **Repositório:** https://github.com/patricia-sousa-silva/apiario-tech
 
 ---
@@ -203,6 +203,42 @@
 
 - **Validação**: `tsc --noEmit` sem erros; teste em browser sem erros de consola; todas as páginas renderizam; modo escuro funcional nos dois sentidos.
 
+### 9. Novas melhorias de UI/UX (14 melhorias em 4 grupos)
+
+- **Novos módulos partilhados**:
+  - `components/EmptyState.tsx` — estado vazio reutilizável com ícone, mensagem e ação.
+  - `components/ErrorBoundary.tsx` — captura erros de renderização com fallback e retry.
+  - `components/GlobalSearch.tsx` — pesquisa global (colmeias, intervenções, alertas) na topbar.
+  - `context/ConnectionContext.tsx` — estado da ligação à API (polling `/health`).
+  - `utils/export.ts` — exportação CSV (com BOM) e PNG (rasterização de SVG).
+  - `utils/notify.ts` — notificações do browser (Notification API) + beep (Web Audio).
+
+- **Grupo 1 — Alto impacto**:
+  - Seletor de períodos predefinidos no Histórico (Hoje, 24h, 7/30/90 dias, Tudo, Personalizado).
+  - Empty states com orientação em todas as listagens.
+  - Exportação de dados em CSV e dos gráficos em PNG.
+  - Indicador de ligação à API (online/offline) com nova tentativa.
+
+- **Grupo 2 — Análise de dados**:
+  - Resumo do período com agregados (mínimo/média/máximo) por métrica.
+  - Comparação de colmeias lado a lado (última leitura por colmeia no Dashboard).
+  - Tendência da bateria com estimativa de autonomia (extrapolação linear).
+  - Heatmap da temperatura por hora do dia (24 células).
+
+- **Grupo 3 — Produtividade**:
+  - Notificações do browser + som para alertas críticos (novos alertas via polling).
+  - Pesquisa global de colmeias, intervenções e alertas com navegação direta.
+  - Atalhos de teclado (1–6 navegam, T alterna o tema, / foca a pesquisa).
+
+- **Grupo 4 — Robustez e acesso**:
+  - Error boundaries + estados de carregamento em todas as páginas.
+  - Acessibilidade: ARIA, foco visível (`:focus-visible`), skip-link, contraste melhorado, `prefers-reduced-motion`.
+  - PWA instalável com offline shell (manifest + service worker, ícone próprio).
+
+- **Backend**: rota pública `GET /api/health` para o indicador de ligação.
+
+- **Validação**: `tsc --noEmit` e `vite build` sem erros; teste em browser — dashboard, histórico (períodos, agregados, bateria, heatmap), pesquisa global e atalhos funcionais; sem erros de consola (apenas 404 esperado de colmeia sem leituras).
+
 ---
 
 ## Estrutura atual do repositório
@@ -239,6 +275,12 @@ apiario-tech/
 ├── frontend/
 │   ├── package.json
 │   ├── tsconfig.json
+│   ├── index.html
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   ├── icon.svg
+│   │   ├── manifest.webmanifest
+│   │   └── sw.js
 │   └── src/
 │       ├── App.tsx
 │       ├── App.css
@@ -246,14 +288,20 @@ apiario-tech/
 │       ├── api/client.ts
 │       ├── context/
 │       │   ├── AuthContext.tsx
-│       │   └── ThemeContext.tsx
+│       │   ├── ThemeContext.tsx
+│       │   └── ConnectionContext.tsx
 │       ├── components/
 │       │   ├── Layout.tsx
 │       │   ├── AuthLayout.tsx
 │       │   ├── Toast.tsx
-│       │   └── ConfirmDialog.tsx
+│       │   ├── ConfirmDialog.tsx
+│       │   ├── EmptyState.tsx
+│       │   ├── ErrorBoundary.tsx
+│       │   └── GlobalSearch.tsx
 │       ├── utils/
-│       │   └── time.ts
+│       │   ├── time.ts
+│       │   ├── export.ts
+│       │   └── notify.ts
 │       └── pages/
 │           ├── Login.tsx
 │           ├── Register.tsx
@@ -300,6 +348,8 @@ apiario-tech/
 | `12bebf9` | firmware: sketches de teste dos sensores (ESP32) |
 | `da8b3a0` | docs: atualizar resumo.md para v0.3.0 (frontend completo) |
 | `e35bfcc` | frontend: melhorias de ui/ux — tempo real, modo escuro, alertas visuais |
+| `029e09d` | docs: atualizar resumo.md para v0.4.0 (melhorias de ui/ux) |
+| `76929bd` | frontend: novas melhorias ui/ux — períodos, exportação, análise, notificações, pesquisa, acessibilidade e PWA |
 
 ---
 
