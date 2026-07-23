@@ -1,14 +1,14 @@
 # Resumo do Projeto Apiário Tech
 
 > Documento de resumo com todos os passos realizados até ao momento.
-> Última atualização: 22 de julho de 2026 (v0.3.0)
+> Última atualização: 22 de julho de 2026 (v0.4.0)
 
 ---
 
 ## Estado geral
 
-**Fase atual:** Plataforma web completa (todas as páginas funcionais) com design profissional
-**Versão documental:** 0.3.0
+**Fase atual:** Plataforma web com UX avançada — tempo real, modo escuro, alertas visuais e validação em browser
+**Versão documental:** 0.4.0
 **Repositório:** https://github.com/patricia-sousa-silva/apiario-tech
 
 ---
@@ -171,6 +171,38 @@
   - Critérios de aceitação
   - Mensagens detalhadas no monitor série
 
+### 8. Melhorias de UI/UX (14 melhorias em 4 grupos)
+
+- **Novos módulos partilhados**:
+  - `utils/time.ts` — tempos relativos (`timeAgo`) e formatação de datas (`formatDateTime`).
+  - `components/Toast.tsx` — notificações toast (sucesso/erro/aviso/info) com auto-fecho.
+  - `components/ConfirmDialog.tsx` — diálogo de confirmação para ações destrutivas.
+  - `context/ThemeContext.tsx` — tema claro/escuro com persistência e `prefers-color-scheme`.
+
+- **Alto impacto**:
+  - Auto-refresh do Dashboard (30 s) com indicador "Atualizado há X".
+  - Modo escuro em toda a aplicação (variáveis CSS, toggle na topbar, persistência).
+  - Badge de alertas pendentes no sino e na sidebar (polling 60 s).
+  - Notificações toast em todas as páginas (substituem alertas inline).
+
+- **Visualização de dados**:
+  - Indicadores de tendência nos cards de métricas (setas, cores bom/mau).
+  - Gráfico das últimas 24 h no Dashboard.
+  - Linhas de referência nos gráficos do Histórico (limites das regras de alerta).
+  - Variação de peso (ganho/perda) no Histórico.
+  - Zoom com `Brush` no gráfico de temperatura.
+  - Tooltip de gráfico personalizado.
+
+- **Interação**:
+  - ConfirmDialog em todas as ações destrutivas (substitui `window.confirm`).
+  - Skeletons de carregamento no Dashboard.
+
+- **Polimento**:
+  - Tempos relativos em todo o lado (Dashboard, Alertas, Intervenções).
+  - Sidebar off-canvas em mobile + topbar reorganizada (hambúrguer, tema, sino).
+
+- **Validação**: `tsc --noEmit` sem erros; teste em browser sem erros de consola; todas as páginas renderizam; modo escuro funcional nos dois sentidos.
+
 ---
 
 ## Estrutura atual do repositório
@@ -210,13 +242,27 @@ apiario-tech/
 │   └── src/
 │       ├── App.tsx
 │       ├── App.css
+│       ├── main.tsx
 │       ├── api/client.ts
-│       ├── context/AuthContext.tsx
-│       ├── components/Layout.tsx
+│       ├── context/
+│       │   ├── AuthContext.tsx
+│       │   └── ThemeContext.tsx
+│       ├── components/
+│       │   ├── Layout.tsx
+│       │   ├── AuthLayout.tsx
+│       │   ├── Toast.tsx
+│       │   └── ConfirmDialog.tsx
+│       ├── utils/
+│       │   └── time.ts
 │       └── pages/
 │           ├── Login.tsx
 │           ├── Register.tsx
-│           └── Dashboard.tsx
+│           ├── Dashboard.tsx
+│           ├── History.tsx
+│           ├── ImportCsv.tsx
+│           ├── Hives.tsx
+│           ├── Interventions.tsx
+│           └── Alerts.tsx
 └── firmware/
     ├── legacy/
     │   ├── README.md
@@ -247,6 +293,13 @@ apiario-tech/
 | `9bcc17e` | docs: inventory original firmware versions |
 | `3d676ee` | docs: link firmware inventory |
 | `1a32083` | firmware: preservar e inventariar os sketches originais (#3) |
+| `c74c678` | chore: configurar .gitignore para o projeto (segredos, gerados, builds) |
+| `df324a7` | docs: contrato de telemetria v1.0 e documento de apresentação (PDF) |
+| `bf2e183` | backend: API REST com autenticação JWT, telemetria, alertas e intervenções |
+| `65648b2` | frontend: plataforma web com design profissional e todas as páginas funcionais |
+| `12bebf9` | firmware: sketches de teste dos sensores (ESP32) |
+| `da8b3a0` | docs: atualizar resumo.md para v0.3.0 (frontend completo) |
+| `e35bfcc` | frontend: melhorias de ui/ux — tempo real, modo escuro, alertas visuais |
 
 ---
 
