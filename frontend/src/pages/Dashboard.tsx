@@ -69,6 +69,7 @@ const REFRESH_INTERVAL = 30_000; // 30 segundos
 
 export default function Dashboard() {
   const [hives, setHives] = useState<Hive[]>([]);
+  const [hiveLatest, setHiveLatest] = useState<Record<string, Reading>>({});
   const [current, setCurrent] = useState<Reading | null>(null);
   const [previous, setPrevious] = useState<Reading | null>(null);
   const [chartData, setChartData] = useState<
@@ -91,6 +92,20 @@ export default function Dashboard() {
       ]);
 
       setHives(hivesRes.data);
+
+      // Última leitura de cada colmeia (para comparação lado a lado)
+      const latestByHive: Record<string, Reading> = {};
+      await Promise.all(
+        (hivesRes.data as Hive[]).map(async (h) => {
+          try {
+            const r = await api.get('/telemetry/latest', { params: { hiveId: h.id } });
+            latestByHive[h.id] = r.data;
+          } catch {
+            // colmeia sem leituras válidas — ignora
+          }
+        }),
+      );
+      setHiveLatest(latestByHive);
 
       const latestTwo: Reading[] = latestRes.data.data ?? [];
       setCurrent(latestTwo[0] ?? null);
@@ -369,6 +384,26 @@ export default function Dashboard() {
                       {hive.apiary.name}{hive.position ? ` · ${hive.position}` : ''}
                     </div>
                   </div>
+                </div>
+                <div className="hive-stats">
+                  {(() => {
+                    const latest = hiveLatest[hive.id];
+                    if (!latest) {
+                      return <span className="hive-stat hive-stat-empty">sem leituras</span>;
+                    }
+                    return (
+                      <>
+                        <span className="hive-stat" title="Temperatura do ninho (última leitura)">
+                          <ThermometerSun size={14} />
+                          {latest.tempNest1C !== null ? `${latest.tempNest1C.toFixed(1)} °C` : '—'}
+                        </span>
+                        <span className="hive-stat" title="Peso (última leitura)">
+                          <Weight size={14} />
+                          {latest.weightG !== null ? `${(latest.weightG / 1000).toFixed(1)} kg` : '—'}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
                 <Link to="/history" className="btn btn-secondary btn-sm">
                   <LineChartIcon size={15} /> Ver dados

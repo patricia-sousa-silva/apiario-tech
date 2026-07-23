@@ -12,6 +12,11 @@ import * as intervention from '../controllers/interventionController.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+// --- Health check (público) ---
+router.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()) });
+});
+
 // --- Autenticação (público) ---
 router.post('/auth/register', auth.register);
 router.post('/auth/login', auth.login);

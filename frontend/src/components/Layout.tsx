@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   Hexagon, LayoutDashboard, LineChart, Boxes, Upload,
@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useConnection } from '../context/ConnectionContext';
+import { requestNotifyPermission, sendBrowserNotification, playBeep } from '../utils/notify';
+import GlobalSearch from './GlobalSearch';
 import api from '../api/client';
 
 const navItems = [
@@ -30,17 +33,40 @@ function getInitials(name?: string) {
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { status, lastChecked, recheck } = useConnection();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingAlerts, setPendingAlerts] = useState(0);
+  const knownAlertIds = useRef<Set<string>>(new Set());
+  const firstAlertLoad = useRef(true);
 
   const fetchPendingAlerts = useCallback(async () => {
     try {
       const res = await api.get('/alerts', { params: { acknowledged: 'false' } });
-      setPendingAlerts(Array.isArray(res.data) ? res.data.length : 0);
+      const list: { id: string; message: string }[] = Array.isArray(res.data) ? res.data : [];
+      setPendingAlerts(list.length);
+
+      // Deteta alertas novos desde a última verificação para notificar
+      if (!firstAlertLoad.current) {
+        const fresh = list.filter((a) => !knownAlertIds.current.has(a.id));
+        if (fresh.length > 0) {
+          playBeep();
+          sendBrowserNotification(
+            'Apiário Tech — novo alerta',
+            fresh.map((a) => a.message).join(' · '),
+          );
+        }
+      }
+      knownAlertIds.current = new Set(list.map((a) => a.id));
+      firstAlertLoad.current = false;
     } catch {
       // silencioso — o badge é informativo
     }
+  }, []);
+
+  useEffect(() => {
+    // Pede permissão para notificações do browser (uma vez)
+    requestNotifyPermission();
   }, []);
 
   useEffect(() => {
@@ -48,6 +74,31 @@ export default function Layout({ children }: { children: ReactNode }) {
     const interval = setInterval(fetchPendingAlerts, 60_000);
     return () => clearInterval(interval);
   }, [fetchPendingAlerts]);
+
+  // Atalhos de teclado globais: 1–6 navegam, T alterna o tema, / foca a pesquisa
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isTyping =
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+      if (isTyping || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        document.getElementById('global-search-input')?.focus();
+        return;
+      }
+      if (e.key === 't' || e.key === 'T') {
+        toggleTheme();
+        return;
+      }
+      const routes: Record<string, string> = {
+        '1': '/', '2': '/history', '3': '/hives', '4': '/import', '5': '/interventions', '6': '/alerts',
+      };
+      if (routes[e.key]) navigate(routes[e.key]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navigate, toggleTheme]);
 
   const handleLogout = () => {
     logout();
@@ -80,6 +131,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="layout">
+      {/* Ligação de salto para leitores de ecrã / teclado */}
+      <a href="#main-content" className="skip-link">Saltar para o conteúdo</a>
+
       {/* Overlay para fechar o menu em mobile */}
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
@@ -93,7 +147,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <span className="logo-text">Apiário Tech</span>
         </Link>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Navegação principal">
           <div className="sidebar-section">Monitorização</div>
           {monitoring.map(renderLink)}
 
@@ -127,7 +181,28 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Menu size={20} />
           </button>
 
+          <GlobalSearch />
+
           <div className="topbar-spacer" />
+
+          <button
+            type="button"
+            className={`conn-indicator conn-${status}`}
+            onClick={recheck}
+            title={
+              status === 'online'
+                ? `API ligada${lastChecked ? ` · verificado às ${lastChecked.toLocaleTimeString('pt-PT')}` : ''}`
+                : status === 'offline'
+                  ? 'API inacessível — clique para voltar a verificar'
+                  : 'A verificar ligação…'
+            }
+            aria-label={`Estado da ligação à API: ${status}`}
+          >
+            <span className="conn-dot" aria-hidden="true" />
+            <span className="conn-label">
+              {status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : '…'}
+            </span>
+          </button>
 
           <button
             className="topbar-icon-btn"
@@ -146,7 +221,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </Link>
         </header>
 
-        <main className="main-content">{children}</main>
+        <main id="main-content" className="main-content" tabIndex={-1}>{children}</main>
       </div>
     </div>
   );

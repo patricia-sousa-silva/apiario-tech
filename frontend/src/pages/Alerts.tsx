@@ -3,6 +3,7 @@ import { BellRing, Plus, Trash2, CheckCircle2, Settings2, X, Power } from 'lucid
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { timeAgo } from '../utils/time';
 
 interface AlertRule {
@@ -175,10 +176,11 @@ export default function Alerts() {
           <h2><BellRing size={18} /> Alertas recentes</h2>
         </div>
         {alerts.length === 0 ? (
-          <div className="empty-state">
-            <BellRing size={36} />
-            Ainda não foram gerados alertas.
-          </div>
+          <EmptyState
+            icon={<BellRing size={36} />}
+            title="Ainda não foram gerados alertas"
+            message="Quando uma leitura ultrapassar os limites de uma regra ativa, o alerta aparece aqui."
+          />
         ) : (
           <div className="hives-list">
             {alerts.map((alert) => (
@@ -219,7 +221,14 @@ export default function Alerts() {
           <h2><Settings2 size={18} /> Regras de alerta</h2>
         </div>
         {rules.length === 0 ? (
-          <div className="empty-state">Nenhuma regra configurada.</div>
+          <EmptyState
+            icon={<Settings2 size={36} />}
+            title="Nenhuma regra configurada"
+            message="Crie regras de alerta para ser avisado quando a temperatura, humidade ou peso saírem dos limites."
+            actionLabel="Criar primeira regra"
+            onAction={openNew}
+            actionIcon={<Plus size={17} />}
+          />
         ) : (
           <div className="table-wrapper">
             <table className="data-table">

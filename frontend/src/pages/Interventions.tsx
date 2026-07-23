@@ -6,6 +6,7 @@ import {
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { formatDateTime } from '../utils/time';
 
 interface Hive {
@@ -152,13 +153,14 @@ export default function Interventions() {
 
       {interventions.length === 0 ? (
         <div className="card">
-          <div className="empty-state">
-            <ClipboardList size={40} />
-            Nenhuma intervenção registada.
-            <button className="btn btn-action" onClick={openNew}>
-              <Plus size={17} /> Registar primeira intervenção
-            </button>
-          </div>
+          <EmptyState
+            icon={<ClipboardList size={40} />}
+            title="Nenhuma intervenção registada"
+            message="Registe inspeções, alimentações, tratamentos e colheitas para manter o histórico completo da colmeia."
+            actionLabel="Registar primeira intervenção"
+            onAction={openNew}
+            actionIcon={<Plus size={17} />}
+          />
         </div>
       ) : (
         <div className="card">
