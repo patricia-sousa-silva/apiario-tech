@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from 'react';
 import { Boxes, Hexagon, Plus, Pencil, Trash2, MapPin, X } from 'lucide-react';
 import api from '../api/client';
+import { useToast } from '../components/Toast';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface Apiary {
   id: string;
@@ -18,6 +20,7 @@ interface Hive {
 }
 
 export default function Hives() {
+  const { success, error: showError } = useToast();
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +35,10 @@ export default function Hives() {
   const [apiaryModal, setApiaryModal] = useState(false);
   const [apiaryName, setApiaryName] = useState('');
   const [apiaryLocation, setApiaryLocation] = useState('');
+
+  // Confirmação de eliminação
+  const [hiveToDelete, setHiveToDelete] = useState<Hive | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -77,25 +84,34 @@ export default function Hives() {
       const payload = { name: hiveName, position: hivePosition, apiaryId: hiveApiaryId };
       if (editingHive) {
         await api.put(`/hives/${editingHive.id}`, payload);
+        success(`Colmeia "${hiveName}" atualizada.`);
       } else {
         await api.post('/hives', payload);
+        success(`Colmeia "${hiveName}" criada com sucesso.`);
       }
       setHiveModal(false);
       await fetchApiaries();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.');
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.';
+      setError(msg);
+      showError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteHive = async (hive: Hive) => {
-    if (!confirm(`Eliminar a colmeia "${hive.name}"? Esta ação é irreversível.`)) return;
+  const confirmDeleteHive = async () => {
+    if (!hiveToDelete) return;
+    setDeleting(true);
     try {
-      await api.delete(`/hives/${hive.id}`);
+      await api.delete(`/hives/${hiveToDelete.id}`);
+      success(`Colmeia "${hiveToDelete.name}" eliminada.`);
+      setHiveToDelete(null);
       await fetchApiaries();
-    } catch (err) {
-      console.error('Erro ao eliminar colmeia:', err);
+    } catch {
+      showError('Erro ao eliminar a colmeia.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -112,10 +128,13 @@ export default function Hives() {
     setError('');
     try {
       await api.post('/apiaries', { name: apiaryName, location: apiaryLocation });
+      success(`Apiário "${apiaryName}" criado com sucesso.`);
       setApiaryModal(false);
       await fetchApiaries();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.');
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.';
+      setError(msg);
+      showError(msg);
     } finally {
       setSaving(false);
     }
@@ -137,7 +156,7 @@ export default function Hives() {
           <h1>Colmeias</h1>
           <p className="page-subtitle">Organize os seus apiários e colmeias.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={openNewApiary}>
             <MapPin size={17} /> Novo apiário
           </button>
@@ -169,7 +188,7 @@ export default function Hives() {
                 <MapPin size={18} />
                 {apiary.name}
                 {apiary.location && (
-                  <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                     {' '}&middot; {apiary.location}
                   </span>
                 )}
@@ -198,7 +217,7 @@ export default function Hives() {
                       <button className="btn btn-secondary btn-sm" onClick={() => openEditHive(hive, apiary.id)}>
                         <Pencil size={14} /> Editar
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => deleteHive(hive)}>
+                      <button className="btn btn-danger btn-sm" onClick={() => setHiveToDelete(hive)}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -249,7 +268,7 @@ export default function Hives() {
                 placeholder="Ex.: Esquerda, Direita"
               />
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setHiveModal(false)}>Cancelar</button>
               <button type="submit" className="btn btn-action" disabled={saving}>
                 {saving ? 'A guardar...' : 'Guardar'}
@@ -283,7 +302,7 @@ export default function Hives() {
                 placeholder="Ex.: Terreno familiar"
               />
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setApiaryModal(false)}>Cancelar</button>
               <button type="submit" className="btn btn-action" disabled={saving}>
                 {saving ? 'A guardar...' : 'Criar apiário'}
@@ -292,34 +311,32 @@ export default function Hives() {
           </form>
         </Modal>
       )}
+
+      {/* Confirmação de eliminação */}
+      <ConfirmDialog
+        open={hiveToDelete !== null}
+        title="Eliminar colmeia?"
+        message={
+          hiveToDelete
+            ? `A colmeia "${hiveToDelete.name}" será eliminada definitivamente, incluindo o histórico associado. Esta ação não pode ser desfeita.`
+            : ''
+        }
+        confirmLabel="Eliminar colmeia"
+        onConfirm={confirmDeleteHive}
+        onCancel={() => setHiveToDelete(null)}
+        loading={deleting}
+      />
     </div>
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgb(15 23 42 / 0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 200, padding: '1rem',
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: '#fff', borderRadius: 12, padding: '1.75rem',
-          width: '100%', maxWidth: 440, boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{title}</h2>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
-            aria-label="Fechar"
-          >
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{title}</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Fechar">
             <X size={20} />
           </button>
         </div>

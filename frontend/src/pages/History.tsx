@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, AreaChart, Area,
+  ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine, Brush,
 } from 'recharts';
-import { LineChart as LineChartIcon, Thermometer, Droplets, Weight, Table2 } from 'lucide-react';
+import {
+  LineChart as LineChartIcon, Thermometer, Droplets, Weight, Table2,
+  TrendingUp, TrendingDown,
+} from 'lucide-react';
 import api from '../api/client';
 
 interface Reading {
@@ -25,6 +28,15 @@ interface Hive {
   name: string;
 }
 
+interface AlertRule {
+  id: string;
+  name: string;
+  metric: string;
+  operator: string;
+  threshold: number;
+  active: boolean;
+}
+
 type Period = '24h' | '7d' | '30d' | 'all';
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -43,9 +55,35 @@ function formatTime(ts: string, period: Period) {
     ' ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
 }
 
+/** Tooltip personalizado para os gráficos. */
+function ChartTooltip({ active, payload, label, unit }: {
+  active?: boolean;
+  payload?: { name?: string; value?: number | string; color?: string }[];
+  label?: string;
+  unit?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-label">{label}</div>
+      {payload.map((entry, i) => (
+        <div key={i} className="chart-tooltip-row">
+          <span className="chart-tooltip-dot" style={{ background: entry.color }} />
+          <span>{entry.name}:</span>
+          <strong>
+            {entry.value !== null && entry.value !== undefined ? entry.value : '—'}
+            {unit ? ` ${unit}` : ''}
+          </strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function History() {
   const [hives, setHives] = useState<Hive[]>([]);
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [rules, setRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [hiveId, setHiveId] = useState('');
   const [period, setPeriod] = useState<Period>('7d');
@@ -76,6 +114,7 @@ export default function History() {
 
   useEffect(() => {
     api.get('/hives').then((res) => setHives(res.data)).catch(() => {});
+    api.get('/alert-rules').then((res) => setRules(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -91,6 +130,23 @@ export default function History() {
     weight: r.weightG !== null ? Number((r.weightG / 1000).toFixed(2)) : null,
   }));
 
+  // Variação de peso no período (primeira → última leitura)
+  const weightReadings = readings.filter((r) => r.weightG !== null);
+  const weightDelta =
+    weightReadings.length >= 2
+      ? ((weightReadings[weightReadings.length - 1].weightG as number) -
+          (weightReadings[0].weightG as number)) / 1000
+      : null;
+
+  // Regras ativas agrupadas por métrica para linhas de referência
+  const activeRules = rules.filter((r) => r.active);
+  const tempRules = activeRules.filter((r) =>
+    ['TEMP_EXT', 'TEMP_NEST1', 'TEMP_NEST2'].includes(r.metric));
+  const humidityRules = activeRules.filter((r) => r.metric === 'HUMIDITY');
+  const weightRules = activeRules.filter((r) => r.metric === 'WEIGHT');
+
+  const axisTick = { fontSize: 11, fill: 'var(--text-muted)' };
+
   return (
     <div>
       <div className="page-header">
@@ -98,27 +154,17 @@ export default function History() {
           <h1>Histórico</h1>
           <p className="page-subtitle">Consulte a evolução das leituras do seu apiário.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <select
-            value={hiveId}
-            onChange={(e) => setHiveId(e.target.value)}
-            style={{
-              padding: '0.5rem 0.875rem', borderRadius: 6, border: '1px solid #cbd5e1',
-              fontSize: '0.875rem', fontFamily: 'inherit', background: '#fff',
-            }}
-          >
+        <div className="page-header-actions">
+          <select className="filter-select" value={hiveId} onChange={(e) => setHiveId(e.target.value)}>
             <option value="">Todas as colmeias</option>
             {hives.map((h) => (
               <option key={h.id} value={h.id}>{h.name}</option>
             ))}
           </select>
           <select
+            className="filter-select"
             value={period}
             onChange={(e) => setPeriod(e.target.value as Period)}
-            style={{
-              padding: '0.5rem 0.875rem', borderRadius: 6, border: '1px solid #cbd5e1',
-              fontSize: '0.875rem', fontFamily: 'inherit', background: '#fff',
-            }}
           >
             {PERIODS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -140,9 +186,11 @@ export default function History() {
       </div>
 
       {loading ? (
-        <div className="loading">
-          <div className="spinner" />
-          A carregar histórico...
+        <div className="card">
+          <div className="card-body">
+            <div className="skeleton skeleton-chart" />
+            <div className="skeleton skeleton-chart" style={{ marginTop: '1rem' }} />
+          </div>
         </div>
       ) : readings.length === 0 ? (
         <div className="card">
@@ -157,18 +205,31 @@ export default function History() {
           <div className="card">
             <div className="card-header">
               <h2><Thermometer size={18} /> Temperaturas (°C)</h2>
+              {tempRules.length > 0 && (
+                <span className="ref-hint">— — limites de alerta ativos</span>
+              )}
             </div>
             <div className="card-body">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={40} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} domain={['auto', 'auto']} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis dataKey="time" tick={axisTick} minTickGap={40} />
+                  <YAxis tick={axisTick} domain={['auto', 'auto']} />
+                  <Tooltip content={<ChartTooltip unit="°C" />} />
                   <Legend />
+                  {tempRules.map((r) => (
+                    <ReferenceLine
+                      key={r.id}
+                      y={r.threshold}
+                      stroke="#dc2626"
+                      strokeDasharray="5 5"
+                      label={{ value: r.name, position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
+                    />
+                  ))}
                   <Line type="monotone" dataKey="tempExt" name="Exterior" stroke="#d97706" strokeWidth={2} dot={false} connectNulls />
                   <Line type="monotone" dataKey="nest1" name="Ninho 1" stroke="#dc2626" strokeWidth={2} dot={false} connectNulls />
                   <Line type="monotone" dataKey="nest2" name="Ninho 2" stroke="#2563eb" strokeWidth={2} dot={false} connectNulls />
+                  <Brush dataKey="time" height={26} stroke="var(--primary)" travellerWidth={8} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -188,10 +249,19 @@ export default function History() {
                       <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={40} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} domain={[0, 100]} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis dataKey="time" tick={axisTick} minTickGap={40} />
+                  <YAxis tick={axisTick} domain={[0, 100]} />
+                  <Tooltip content={<ChartTooltip unit="%" />} />
+                  {humidityRules.map((r) => (
+                    <ReferenceLine
+                      key={r.id}
+                      y={r.threshold}
+                      stroke="#dc2626"
+                      strokeDasharray="5 5"
+                      label={{ value: r.name, position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
+                    />
+                  ))}
                   <Area type="monotone" dataKey="humidity" name="Humidade" stroke="#2563eb" strokeWidth={2} fill="url(#humGradient)" connectNulls />
                 </AreaChart>
               </ResponsiveContainer>
@@ -202,6 +272,12 @@ export default function History() {
           <div className="card">
             <div className="card-header">
               <h2><Weight size={18} /> Peso da colmeia (kg)</h2>
+              {weightDelta !== null && (
+                <span className={`weight-delta ${weightDelta >= 0 ? 'gain' : 'loss'}`}>
+                  {weightDelta >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  {weightDelta >= 0 ? '+' : ''}{weightDelta.toFixed(1)} kg no período
+                </span>
+              )}
             </div>
             <div className="card-body">
               <ResponsiveContainer width="100%" height={220}>
@@ -212,10 +288,19 @@ export default function History() {
                       <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={40} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} domain={['auto', 'auto']} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis dataKey="time" tick={axisTick} minTickGap={40} />
+                  <YAxis tick={axisTick} domain={['auto', 'auto']} />
+                  <Tooltip content={<ChartTooltip unit="kg" />} />
+                  {weightRules.map((r) => (
+                    <ReferenceLine
+                      key={r.id}
+                      y={r.threshold}
+                      stroke="#dc2626"
+                      strokeDasharray="5 5"
+                      label={{ value: r.name, position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
+                    />
+                  ))}
                   <Area type="monotone" dataKey="weight" name="Peso" stroke="#16a34a" strokeWidth={2} fill="url(#weightGradient)" connectNulls />
                 </AreaChart>
               </ResponsiveContainer>

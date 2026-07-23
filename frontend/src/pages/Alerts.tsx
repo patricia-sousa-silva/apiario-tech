@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { BellRing, Plus, Trash2, CheckCircle2, Settings2, X, Power } from 'lucide-react';
 import api from '../api/client';
+import { useToast } from '../components/Toast';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { timeAgo } from '../utils/time';
 
 interface AlertRule {
   id: string;
@@ -38,16 +41,19 @@ const OPERATOR_LABELS: Record<string, string> = {
 };
 
 export default function Alerts() {
+  const { success, error: showError } = useToast();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
+  const [ruleToDelete, setRuleToDelete] = useState<AlertRule | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [name, setName] = useState('');
   const [metric, setMetric] = useState('TEMP_NEST1');
   const [operator, setOperator] = useState('GT');
   const [threshold, setThreshold] = useState('38');
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -74,14 +80,14 @@ export default function Alerts() {
     setMetric('TEMP_NEST1');
     setOperator('GT');
     setThreshold('38');
-    setError('');
+    setFormError('');
     setModal(true);
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError('');
+    setFormError('');
     try {
       await api.post('/alert-rules', {
         name,
@@ -90,9 +96,12 @@ export default function Alerts() {
         threshold: parseFloat(threshold),
       });
       setModal(false);
+      success('Regra de alerta criada com sucesso.');
       await fetchData();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.');
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.';
+      setFormError(msg);
+      showError(msg);
     } finally {
       setSaving(false);
     }
@@ -101,28 +110,35 @@ export default function Alerts() {
   const toggleRule = async (rule: AlertRule) => {
     try {
       await api.put(`/alert-rules/${rule.id}`, { active: !rule.active });
+      success(`Regra "${rule.name}" ${rule.active ? 'desativada' : 'ativada'}.`);
       await fetchData();
-    } catch (err) {
-      console.error('Erro ao alterar regra:', err);
+    } catch {
+      showError('Erro ao alterar o estado da regra.');
     }
   };
 
-  const deleteRule = async (id: string) => {
-    if (!confirm('Eliminar esta regra de alerta?')) return;
+  const confirmDelete = async () => {
+    if (!ruleToDelete) return;
+    setDeleting(true);
     try {
-      await api.delete(`/alert-rules/${id}`);
+      await api.delete(`/alert-rules/${ruleToDelete.id}`);
+      success(`Regra "${ruleToDelete.name}" eliminada.`);
+      setRuleToDelete(null);
       await fetchData();
-    } catch (err) {
-      console.error('Erro ao eliminar regra:', err);
+    } catch {
+      showError('Erro ao eliminar a regra.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   const acknowledge = async (id: string) => {
     try {
       await api.patch(`/alerts/${id}/acknowledge`);
+      success('Alerta reconhecido.');
       await fetchData();
-    } catch (err) {
-      console.error('Erro ao reconhecer alerta:', err);
+    } catch {
+      showError('Erro ao reconhecer o alerta.');
     }
   };
 
@@ -171,15 +187,15 @@ export default function Alerts() {
                   <span
                     className="hive-icon"
                     style={alert.acknowledged
-                      ? { background: '#f1f5f9', color: '#94a3b8' }
-                      : { background: '#fef2f2', color: '#dc2626' }}
+                      ? { background: 'var(--surface-2)', color: 'var(--text-muted)' }
+                      : { background: 'var(--error-bg)', color: 'var(--error)' }}
                   >
                     <BellRing size={18} />
                   </span>
                   <div>
                     <div className="hive-name">{alert.message}</div>
                     <div className="hive-apiary">
-                      {alert.rule.name} · {new Date(alert.createdAt).toLocaleString('pt-PT')}
+                      {alert.rule.name} · {timeAgo(alert.createdAt)}
                       {alert.value !== null && ` · valor: ${alert.value}`}
                     </div>
                   </div>
@@ -236,7 +252,7 @@ export default function Alerts() {
                         >
                           <Power size={14} />
                         </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => deleteRule(rule.id)}>
+                        <button className="btn btn-danger btn-sm" onClick={() => setRuleToDelete(rule)}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -249,35 +265,18 @@ export default function Alerts() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal de nova regra */}
       {modal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgb(15 23 42 / 0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 200, padding: '1rem',
-          }}
-          onClick={() => setModal(false)}
-        >
-          <div
-            style={{
-              background: '#fff', borderRadius: 12, padding: '1.75rem',
-              width: '100%', maxWidth: 440, boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Nova regra de alerta</h2>
-              <button
-                onClick={() => setModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
-                aria-label="Fechar"
-              >
+        <div className="modal-overlay" onClick={() => setModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Nova regra de alerta</h2>
+              <button className="modal-close" onClick={() => setModal(false)} aria-label="Fechar">
                 <X size={20} />
               </button>
             </div>
 
-            {error && <div className="error-message">{error}</div>}
+            {formError && <div className="error-message">{formError}</div>}
 
             <form onSubmit={save}>
               <div className="form-group">
@@ -319,7 +318,7 @@ export default function Alerts() {
                   />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-action" disabled={saving}>
                   {saving ? 'A guardar...' : 'Criar regra'}
@@ -329,6 +328,21 @@ export default function Alerts() {
           </div>
         </div>
       )}
+
+      {/* Confirmação de eliminação */}
+      <ConfirmDialog
+        open={ruleToDelete !== null}
+        title="Eliminar regra de alerta?"
+        message={
+          ruleToDelete
+            ? `A regra "${ruleToDelete.name}" será eliminada definitivamente. Esta ação não pode ser desfeita.`
+            : ''
+        }
+        confirmLabel="Eliminar regra"
+        onConfirm={confirmDelete}
+        onCancel={() => setRuleToDelete(null)}
+        loading={deleting}
+      />
     </div>
   );
 }

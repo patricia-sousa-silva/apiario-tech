@@ -1,6 +1,7 @@
 import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import api from '../api/client';
+import { useToast } from '../components/Toast';
 
 interface ImportResult {
   total: number;
@@ -11,6 +12,7 @@ interface ImportResult {
 }
 
 export default function ImportCsv() {
+  const { success, error: showError, warning } = useToast();
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -21,6 +23,7 @@ export default function ImportCsv() {
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
       setError('Apenas ficheiros CSV são suportados.');
+      showError('Apenas ficheiros CSV são suportados.');
       setResult(null);
       return;
     }
@@ -38,9 +41,18 @@ export default function ImportCsv() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setResult(res.data);
+      const r = res.data as ImportResult;
+      if (r.rejected === 0 && r.imported > 0) {
+        success(`Importação concluída: ${r.imported} leituras registadas.`);
+      } else if (r.imported > 0) {
+        warning(`Importadas ${r.imported} leituras, ${r.rejected} rejeitadas.`);
+      } else {
+        showError('Nenhuma leitura foi importada.');
+      }
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao importar ficheiro.';
       setError(message);
+      showError(message);
     } finally {
       setUploading(false);
     }
@@ -139,9 +151,9 @@ export default function ImportCsv() {
                     {result.rejected} linhas rejeitadas. Primeiros erros:
                   </div>
                   <div style={{
-                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6,
+                    background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6,
                     padding: '0.875rem 1rem', fontSize: '0.8125rem', fontFamily: 'Consolas, monospace',
-                    color: '#475569', maxHeight: 220, overflowY: 'auto',
+                    color: 'var(--text-secondary)', maxHeight: 220, overflowY: 'auto',
                   }}>
                     {result.errors.map((e, i) => (
                       <div key={i} style={{ padding: '0.125rem 0' }}>{e}</div>
@@ -160,7 +172,7 @@ export default function ImportCsv() {
           <h2><Info size={18} /> Formato esperado (contrato v1.0)</h2>
         </div>
         <div className="card-body">
-          <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
             O ficheiro deve respeitar o contrato de telemetria. Colunas obrigatórias:
           </p>
           <div style={{
@@ -171,7 +183,7 @@ export default function ImportCsv() {
             <div style={{ color: '#94a3b8' }}>device_id,timestamp,temp_ext_c,humidity_pct,pressure_hpa,temp_nest1_c,temp_nest2_c,weight_g,battery_mv,status_flags</div>
             <div>ESP32-001,2026-07-22T08:00:00Z,24.35,61.20,1015.3,34.50,35.10,45200,12450,OK</div>
           </div>
-          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', color: '#64748b', fontSize: '0.8125rem' }}>
+          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
             <FileSpreadsheet size={16} style={{ flexShrink: 0, marginTop: 2 }} />
             <span>
               Leituras duplicadas (mesmo dispositivo e data/hora) são ignoradas automaticamente.

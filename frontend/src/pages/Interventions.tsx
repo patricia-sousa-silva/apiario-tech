@@ -4,6 +4,9 @@ import {
   Stethoscope, Droplet, Wrench, X,
 } from 'lucide-react';
 import api from '../api/client';
+import { useToast } from '../components/Toast';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { formatDateTime } from '../utils/time';
 
 interface Hive {
   id: string;
@@ -30,11 +33,14 @@ const TYPE_CONFIG: Record<InterventionType, { label: string; icon: typeof Search
 };
 
 export default function Interventions() {
+  const { success, error: showError } = useToast();
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [hives, setHives] = useState<Hive[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [filterType, setFilterType] = useState('');
+  const [toDelete, setToDelete] = useState<Intervention | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [hiveId, setHiveId] = useState('');
   const [type, setType] = useState<InterventionType>('INSPECTION');
@@ -85,21 +91,29 @@ export default function Interventions() {
         notes: notes || undefined,
       });
       setModal(false);
+      success('Intervenção registada com sucesso.');
       await fetchInterventions();
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.');
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao guardar.';
+      setError(msg);
+      showError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Eliminar esta intervenção?')) return;
+  const confirmRemove = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
     try {
-      await api.delete(`/interventions/${id}`);
+      await api.delete(`/interventions/${toDelete.id}`);
+      success('Intervenção eliminada.');
+      setToDelete(null);
       await fetchInterventions();
-    } catch (err) {
-      console.error('Erro ao eliminar intervenção:', err);
+    } catch {
+      showError('Erro ao eliminar a intervenção.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -119,14 +133,11 @@ export default function Interventions() {
           <h1>Intervenções</h1>
           <p className="page-subtitle">Registe inspeções, alimentações, tratamentos e colheitas.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="page-header-actions">
           <select
+            className="filter-select"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            style={{
-              padding: '0.5rem 0.875rem', borderRadius: 6, border: '1px solid #cbd5e1',
-              fontSize: '0.875rem', fontFamily: 'inherit', background: '#fff',
-            }}
           >
             <option value="">Todos os tipos</option>
             {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
@@ -174,16 +185,14 @@ export default function Interventions() {
                           <Icon size={13} /> {cfg.label}
                         </span>
                       </td>
-                      <td className="font-mono">
-                        {new Date(itv.date).toLocaleDateString('pt-PT')}
-                      </td>
+                      <td className="font-mono">{formatDateTime(itv.date)}</td>
                       <td style={{ fontWeight: 600 }}>{itv.hive.name}</td>
                       <td className="text-muted">{itv.hive.apiary.name}</td>
                       <td className="text-muted" style={{ maxWidth: 320 }}>
                         {itv.notes || '—'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-danger btn-sm" onClick={() => remove(itv.id)}>
+                        <button className="btn btn-danger btn-sm" onClick={() => setToDelete(itv)}>
                           <Trash2 size={14} />
                         </button>
                       </td>
@@ -196,30 +205,13 @@ export default function Interventions() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal de nova intervenção */}
       {modal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgb(15 23 42 / 0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 200, padding: '1rem',
-          }}
-          onClick={() => setModal(false)}
-        >
-          <div
-            style={{
-              background: '#fff', borderRadius: 12, padding: '1.75rem',
-              width: '100%', maxWidth: 460, boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Nova intervenção</h2>
-              <button
-                onClick={() => setModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
-                aria-label="Fechar"
-              >
+        <div className="modal-overlay" onClick={() => setModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Nova intervenção</h2>
+              <button className="modal-close" onClick={() => setModal(false)} aria-label="Fechar">
                 <X size={20} />
               </button>
             </div>
@@ -268,7 +260,7 @@ export default function Interventions() {
                     placeholder="Ex.: Colónia forte, postura regular..."
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
                   <button type="submit" className="btn btn-action" disabled={saving}>
                     {saving ? 'A guardar...' : 'Registar'}
@@ -279,6 +271,21 @@ export default function Interventions() {
           </div>
         </div>
       )}
+
+      {/* Confirmação de eliminação */}
+      <ConfirmDialog
+        open={toDelete !== null}
+        title="Eliminar intervenção?"
+        message={
+          toDelete
+            ? `A intervenção "${TYPE_CONFIG[toDelete.type].label}" em ${toDelete.hive.name} será eliminada definitivamente.`
+            : ''
+        }
+        confirmLabel="Eliminar intervenção"
+        onConfirm={confirmRemove}
+        onCancel={() => setToDelete(null)}
+        loading={deleting}
+      />
     </div>
   );
 }
