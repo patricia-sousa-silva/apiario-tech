@@ -1,14 +1,14 @@
 # Resumo do Projeto Apiário Tech
 
 > Documento de resumo com todos os passos realizados até ao momento.
-> Última atualização: 22 de julho de 2026 (v0.5.0)
+> Última atualização: 22 de julho de 2026 (v0.6.0)
 
 ---
 
 ## Estado geral
 
-**Fase atual:** Plataforma web avançada — análise de dados, notificações, pesquisa global, acessibilidade e PWA instalável
-**Versão documental:** 0.5.0
+**Fase atual:** Pipeline de ingestão de telemetria — o ESP32 já pode enviar leituras diretamente para a API com autenticação por chave e geração automática de alertas
+**Versão documental:** 0.6.0
 **Repositório:** https://github.com/patricia-sousa-silva/apiario-tech
 
 ---
@@ -116,6 +116,8 @@
 - **API REST completa**:
   - `POST /api/auth/register` e `POST /api/auth/login` — autenticação
   - CRUD: `/api/apiaries`, `/api/hives`, `/api/devices`
+  - `POST /api/devices/:id/regenerate-key` — regenera a chave de API de um dispositivo
+  - `POST /api/telemetry` — ingestão JSON direta do dispositivo (chave `X-Device-Key`)
   - `POST /api/telemetry/import` — importação CSV com validação e deduplicação
   - `GET /api/telemetry` — histórico com filtros e paginação
   - `GET /api/telemetry/latest` — última leitura válida
@@ -239,6 +241,31 @@
 
 - **Validação**: `tsc --noEmit` e `vite build` sem erros; teste em browser — dashboard, histórico (períodos, agregados, bateria, heatmap), pesquisa global e atalhos funcionais; sem erros de consola (apenas 404 esperado de colmeia sem leituras).
 
+### 10. Pipeline de ingestão de telemetria (o ESP32 liga-se à API)
+
+- **Autenticação de dispositivo**:
+  - Novo campo `apiKey` no modelo `Device` (único, prefixo `atk_`).
+  - `middleware/deviceAuth.ts` — valida o cabeçalho `X-Device-Key` (ou `Authorization: Bearer`), rejeita chaves inválidas (401) e dispositivos inativos (403).
+  - Chave gerada automaticamente na criação de um dispositivo.
+  - Novo endpoint `POST /api/devices/:id/regenerate-key` — regenera a chave (a anterior deixa de funcionar).
+
+- **Endpoint de ingestão** `POST /api/telemetry` (autenticado por chave de dispositivo):
+  - Aceita leitura única, array de leituras ou `{ readings: [...] }` (formato JSON do contrato v1.0).
+  - Validação com Zod + intervalos aceitáveis (LIMITS) e tratamento do valor sentinela `-127.00` (guardado como `null`).
+  - Deduplicação por `(device_id, timestamp)`.
+  - Atualiza `lastSeenAt` do dispositivo.
+  - Resposta com contadores: `accepted`, `duplicated`, `rejected`, `alerts`, `errors`.
+
+- **Avaliação automática de alertas** (`services/alertService.ts`):
+  - `evaluateReading()` avalia todas as regras ativas contra cada leitura acabada de registar.
+  - Cria alertas com mensagem legível (ex.: `Temp. ninho 1 = 39.2 °C — regra "X" (> 38 °C)`).
+  - Deduplicação: não cria alertas repetidos enquanto existir um alerta não reconhecido da mesma regra para a mesma colmeia.
+  - **Correção dos "alertas mortos"**: a avaliação passou a correr também na importação CSV (`importCsv`), que até agora nunca avaliava regras.
+
+- **Seed**: dispositivo ESP32-001 com chave de API fixa para testes de ingestão.
+
+- **Validação**: `tsc --noEmit` sem erros; testes de API — 401 sem chave, leitura única e em lote aceites, alerta criado ao violar `TEMP_NEST1 > 38` e não duplicado em violações seguintes, rejeição de valores fora do intervalo, sentinela como `null`; teste em browser — alerta visível na página de Alertas e badge "1" no sino e na sidebar.
+
 ---
 
 ## Estrutura atual do repositório
@@ -262,7 +289,11 @@ apiario-tech/
 │       ├── index.ts
 │       ├── config.ts
 │       ├── lib/prisma.ts
-│       ├── middleware/auth.ts
+│       ├── middleware/
+│       │   ├── auth.ts
+│       │   └── deviceAuth.ts
+│       ├── services/
+│       │   └── alertService.ts
 │       ├── routes/index.ts
 │       └── controllers/
 │           ├── authController.ts
@@ -372,6 +403,18 @@ apiario-tech/
    - `npm run dev` (inicia em http://localhost:5173)
 4. **Testar**: Login com patricia@apiariotech.pt / password123
 
+### Para testar a ingestão de telemetria (simular o ESP32)
+
+1. Obter a chave do dispositivo (no seed: `atk_dev_esp32001_chave_teste_0000000000000001`, ou regenerar via `POST /api/devices/:id/regenerate-key`).
+2. Enviar uma leitura com `curl`:
+   ```bash
+   curl -X POST http://localhost:3001/api/telemetry \
+     -H "Content-Type: application/json" \
+     -H "X-Device-Key: <chave>" \
+     -d '{"timestamp":"2026-07-22T12:00:00Z","temp_ext_c":24.5,"humidity_pct":60,"temp_nest1_c":35,"weight_g":42500,"battery_mv":12400,"status_flags":["OK"]}'
+   ```
+3. Verificar a resposta (`accepted`, `alerts`, …) e o alerta gerado na página de Alertas.
+
 ### Para testar junto ao ESP32 (firmware)
 
 1. Carregar `test_bme280` e validar leitura
@@ -383,6 +426,7 @@ apiario-tech/
 
 ### Desenvolvimento futuro
 
+- **Firmware de produção**: integrar Wi-Fi + HTTP no sketch base para enviar leituras para `POST /api/telemetry` com a chave `X-Device-Key` (batch + retry com buffer em microSD)
 - Firmware base integrado (sensores + RTC + OLED + microSD + CSV)
 - Teste contínuo de bancada
 - Testes automatizados (unitários e de integração)

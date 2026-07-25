@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
+import { authenticateDevice } from '../middleware/deviceAuth.js';
 import * as auth from '../controllers/authController.js';
 import * as apiary from '../controllers/apiaryController.js';
 import * as hive from '../controllers/hiveController.js';
@@ -40,8 +41,11 @@ router.get('/devices', authenticate, device.list);
 router.post('/devices', authenticate, device.create);
 router.put('/devices/:id', authenticate, device.update);
 router.delete('/devices/:id', authenticate, device.remove);
+router.post('/devices/:id/regenerate-key', authenticate, device.regenerateKey);
 
 // --- Telemetria ---
+// Ingestão direta pelo dispositivo (ESP32) — autenticada via X-Device-Key
+router.post('/telemetry', authenticateDevice, telemetry.ingest);
 router.post('/telemetry/import', authenticate, upload.single('file'), telemetry.importCsv);
 router.get('/telemetry', authenticate, telemetry.list);
 router.get('/telemetry/latest', authenticate, telemetry.latest);

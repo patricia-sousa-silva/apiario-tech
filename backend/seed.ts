@@ -67,6 +67,7 @@ async function main() {
   console.log(`Colmeias criadas: ${hive1.name}, ${hive2.name}`);
 
   // Dispositivo ESP32
+  // Chave de API fixa para testes de ingestão (cabeçalho X-Device-Key).
   const device = await prisma.device.upsert({
     where: { deviceId: 'ESP32-001' },
     update: {},
@@ -75,10 +76,11 @@ async function main() {
       model: 'ESP32 DevKit V1',
       firmwareVer: '0.1.0',
       hiveId: hive1.id,
+      apiKey: 'atk_dev_esp32001_chave_teste_0000000000000001',
     },
   });
 
-  console.log(`Dispositivo criado: ${device.deviceId}`);
+  console.log(`Dispositivo criado: ${device.deviceId} (chave: ${device.apiKey})`);
 
   // Leituras de exemplo
   const now = new Date();

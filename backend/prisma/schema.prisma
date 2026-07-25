@@ -80,6 +80,7 @@ model Hive {
 model Device {
   id          String    @id @default(uuid())
   deviceId    String    @unique @map("device_id") // ex.: ESP32-001
+  apiKey      String?   @unique @map("api_key") // chave de autenticação do dispositivo (X-Device-Key)
   model       String?
   firmwareVer String?   @map("firmware_ver")
   hiveId      String?   @map("hive_id")
