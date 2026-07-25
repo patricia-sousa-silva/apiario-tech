@@ -381,6 +381,8 @@ apiario-tech/
 | `e35bfcc` | frontend: melhorias de ui/ux — tempo real, modo escuro, alertas visuais |
 | `029e09d` | docs: atualizar resumo.md para v0.4.0 (melhorias de ui/ux) |
 | `76929bd` | frontend: novas melhorias ui/ux — períodos, exportação, análise, notificações, pesquisa, acessibilidade e PWA |
+| `f710087` | docs: atualizar resumo.md para v0.5.0 (novas melhorias ui/ux) |
+| `8beda18` | backend: pipeline de ingestão de telemetria — auth de dispositivo, POST /telemetry, alertas automáticos e regenerate-key |
 
 ---
 
