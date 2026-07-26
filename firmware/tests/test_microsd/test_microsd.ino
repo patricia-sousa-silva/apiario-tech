@@ -24,6 +24,10 @@
 #define SD_MISO 19
 #define SD_MOSI 23
 
+// Velocidade SPI baixa para máxima compatibilidade (fios longos ou módulos
+// sensíveis). Igual ao firmware de produção. Só aumentar depois de estável.
+#define SD_SPI_FREQ 1000000UL
+
 #define FICHEIRO_TESTE "/teste.txt"
 
 bool sdOK = false;
@@ -38,30 +42,60 @@ void setup() {
   Serial.println("================================");
   Serial.println();
 
+  Serial.print("Pinos SPI -> CS=");
+  Serial.print(SD_CS);
+  Serial.print("  SCK=");
+  Serial.print(SD_SCK);
+  Serial.print("  MISO=");
+  Serial.print(SD_MISO);
+  Serial.print("  MOSI=");
+  Serial.println(SD_MOSI);
+  Serial.print("Velocidade SPI: ");
+  Serial.print(SD_SPI_FREQ / 1000UL);
+  Serial.println(" kHz");
+  Serial.println();
+
   Serial.println("A iniciar SPI...");
   SPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
   delay(500);
 
-  Serial.println("A iniciar cartão microSD...");
-  sdOK = SD.begin(SD_CS);
+  Serial.println("A iniciar cartão microSD (até 3 tentativas)...");
+  for (int tentativa = 1; tentativa <= 3 && !sdOK; tentativa++) {
+    sdOK = SD.begin(SD_CS, SPI, SD_SPI_FREQ);
+    if (!sdOK) {
+      Serial.print("  Tentativa ");
+      Serial.print(tentativa);
+      Serial.println(" falhou.");
+      delay(1000);
+    }
+  }
 
   if (!sdOK) {
+    Serial.println();
     Serial.println("✗ ERRO: Cartão microSD não iniciou!");
     Serial.println();
-    Serial.println("  Verifique:");
-    Serial.println("  - Cartão inserido corretamente");
-    Serial.println("  - Formatação FAT32");
-    Serial.println("  - Ligações CS, SCK, MISO, MOSI");
-    Serial.println("  - Alimentação do módulo (3.3V ou 5V)");
-    Serial.println("  - Outro cartão, se disponível");
+    Serial.println("  Causas mais prováveis (por ordem):");
+    Serial.println("  1. Cartão em exFAT — tem de estar em FAT32.");
+    Serial.println("     (cartões > 32 GB vêm em exFAT e NÃO funcionam)");
+    Serial.println("  2. Fios MISO e MOSI trocados — experimente trocar.");
+    Serial.println("  3. Alimentação fraca — ligue o módulo a 5V (se tiver");
+    Serial.println("     regulador) ou 3.3V, e use fios curtos.");
+    Serial.println("  4. Cartão mal encaixado ou contactos sujos.");
+    Serial.println("  5. Experimente outro cartão, se disponível.");
     Serial.println();
-    Serial.println("  Tente também:");
-    Serial.println("  - Reduzir a velocidade SPI");
-    Serial.println("  - Verificar soldas e contactos");
+    Serial.println("  Depois de corrigir, reinicie o ESP32.");
     return;
   }
 
   Serial.println("✓ Cartão microSD iniciado.");
+
+  // Tipo de cartão
+  uint8_t tipo = SD.cardType();
+  Serial.print("  Tipo: ");
+  if (tipo == CARD_MMC) Serial.println("MMC");
+  else if (tipo == CARD_SD) Serial.println("SD");
+  else if (tipo == CARD_SDHC) Serial.println("SDHC");
+  else Serial.println("desconhecido");
 
   // Mostrar informações do cartão
   uint64_t cardSize = SD.cardSize() / (1024 * 1024);
