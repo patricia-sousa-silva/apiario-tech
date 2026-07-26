@@ -19,7 +19,7 @@
 #include <SPI.h>
 #include <SD.h>
 
-#define SD_CS   27
+#define SD_CS   17
 #define SD_SCK  18
 #define SD_MISO 19
 #define SD_MOSI 23

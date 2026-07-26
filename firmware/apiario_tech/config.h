@@ -78,8 +78,8 @@
 // Barramento OneWire das duas sondas DS18B20 (pull-up 4.7 kΩ).
 #define ONE_WIRE_BUS 4
 
-// Leitor microSD por SPI — igual ao firmware original.
-#define SD_CS   27
+// Leitor microSD por SPI. CS validado no hardware real em GPIO 17.
+#define SD_CS   17
 #define SD_SCK  18
 #define SD_MISO 19
 #define SD_MOSI 23
