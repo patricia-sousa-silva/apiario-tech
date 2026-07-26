@@ -107,6 +107,16 @@ void setup() {
   Serial.println(MODO_TESTE ? "TESTE" : "PRODUCAO");
   Serial.println("=================================");
 
+  // Aviso se a configuração de rede/API ainda não foi preenchida.
+  if (strcmp(WIFI_SSID, "O_TEU_SSID") == 0 ||
+      strcmp(API_DEVICE_KEY, "atk_substituir_pela_chave_real") == 0) {
+    Serial.println();
+    Serial.println("[main] AVISO: config.h ainda nao foi preenchido!");
+    Serial.println("[main]   Defina WIFI_SSID, WIFI_PASSWORD e API_DEVICE_KEY");
+    Serial.println("[main]   em firmware/apiario_tech/config.h antes de usar.");
+    Serial.println();
+  }
+
   // Barramento I2C (OLED + BME280 + RTC).
   Wire.begin(SDA_PIN, SCL_PIN);
 

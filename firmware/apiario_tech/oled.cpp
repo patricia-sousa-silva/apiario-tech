@@ -29,12 +29,6 @@ bool oledBegin() {
   return oledOk;
 }
 
-// Escreve "mm" ou "hh" com dois dígitos.
-static void twoDigits(int v) {
-  if (v < 10) display.print("0");
-  display.print(v);
-}
-
 // Indicador curto do estado do ninho.
 static const char* nestState(float t) {
   if (sensorsIsDs18b20Invalid(t)) return "ERR";
@@ -79,7 +73,7 @@ void oledShowStatus(const Reading& r, unsigned long pendingCount, bool wifiOn) {
   display.print(wifiOn ? " WiFi" : "");
 
   // Linha 1: exterior + humidade.
-  display.setCursor(0, 12);
+  display.setCursor(0, 10);
   if (r.tempExtC <= SENTINEL_F + 0.5f) {
     display.print("Ext: --.-C");
   } else {
@@ -94,7 +88,7 @@ void oledShowStatus(const Reading& r, unsigned long pendingCount, bool wifiOn) {
   }
 
   // Linha 2: pressão.
-  display.setCursor(0, 24);
+  display.setCursor(0, 20);
   if (r.pressureHpa > SENTINEL_F + 0.5f) {
     display.print("P:");
     display.print(r.pressureHpa, 0);
@@ -104,7 +98,7 @@ void oledShowStatus(const Reading& r, unsigned long pendingCount, bool wifiOn) {
   }
 
   // Linha 3: ninho 1.
-  display.setCursor(0, 36);
+  display.setCursor(0, 30);
   display.print("N1:");
   if (r.tempNest1C <= SENTINEL_F + 0.5f) {
     display.print("--.-C ERR");
@@ -115,7 +109,7 @@ void oledShowStatus(const Reading& r, unsigned long pendingCount, bool wifiOn) {
   }
 
   // Linha 4: ninho 2.
-  display.setCursor(0, 48);
+  display.setCursor(0, 40);
   display.print("N2:");
   if (r.tempNest2C <= SENTINEL_F + 0.5f) {
     display.print("--.-C ERR");
@@ -126,7 +120,7 @@ void oledShowStatus(const Reading& r, unsigned long pendingCount, bool wifiOn) {
   }
 
   // Linha 5: peso + bateria + pendentes.
-  display.setCursor(0, 60);
+  display.setCursor(0, 50);
   if (r.weightG != WEIGHT_UNAVAILABLE) {
     display.print(r.weightG / 1000.0f, 1);
     display.print("kg ");
