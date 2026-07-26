@@ -74,6 +74,26 @@ void setup() {
     Serial.println();
     Serial.println("✗ ERRO: Cartão microSD não iniciou!");
     Serial.println();
+
+    // Diagnóstico: distingue falha de comunicação (ligação/alimentação)
+    // de falha do sistema de ficheiros (formatação).
+    uint8_t tipoFalha = SD.cardType();
+    Serial.print("  Tipo detetado: ");
+    if (tipoFalha == CARD_NONE) {
+      Serial.println("NENHUM");
+      Serial.println("  → O ESP32 não consegue comunicar com o cartão.");
+      Serial.println("  → Problema de LIGAÇÃO ou ALIMENTAÇÃO:");
+      Serial.println("    verifique CS, SCK, MISO, MOSI, GND e VCC.");
+    } else {
+      if (tipoFalha == CARD_MMC) Serial.println("MMC");
+      else if (tipoFalha == CARD_SD) Serial.println("SD");
+      else if (tipoFalha == CARD_SDHC) Serial.println("SDHC");
+      else Serial.println("desconhecido");
+      Serial.println("  → O cartão comunica, mas o sistema de ficheiros falhou.");
+      Serial.println("  → Formate o cartão em FAT32 e volte a tentar.");
+    }
+    Serial.println();
+
     Serial.println("  Causas mais prováveis (por ordem):");
     Serial.println("  1. Cartão em exFAT — tem de estar em FAT32.");
     Serial.println("     (cartões > 32 GB vêm em exFAT e NÃO funcionam)");
