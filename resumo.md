@@ -1,14 +1,14 @@
 # Resumo do Projeto Apiário Tech
 
 > Documento de resumo com todos os passos realizados até ao momento.
-> Última atualização: 22 de julho de 2026 (v0.6.0)
+> Última atualização: 22 de julho de 2026 (v0.7.0)
 
 ---
 
 ## Estado geral
 
-**Fase atual:** Pipeline de ingestão de telemetria — o ESP32 já pode enviar leituras diretamente para a API com autenticação por chave e geração automática de alertas
-**Versão documental:** 0.6.0
+**Fase atual:** Firmware de produção — sketch modular completo (sensores + RTC + OLED + microSD + Wi-Fi/HTTP) pronto a carregar no ESP32 para enviar leituras para a API
+**Versão documental:** 0.7.0
 **Repositório:** https://github.com/patricia-sousa-silva/apiario-tech
 
 ---
@@ -266,6 +266,25 @@
 
 - **Validação**: `tsc --noEmit` sem erros; testes de API — 401 sem chave, leitura única e em lote aceites, alerta criado ao violar `TEMP_NEST1 > 38` e não duplicado em violações seguintes, rejeição de valores fora do intervalo, sentinela como `null`; teste em browser — alerta visível na página de Alertas e badge "1" no sino e na sidebar.
 
+### 11. Firmware de produção (pasta firmware/apiario_tech/)
+
+- **Sketch modular e tolerante a falhas** para ESP32, organizado em módulos com responsabilidades separadas:
+  - `config.h` — configuração central: identidade do dispositivo, Wi-Fi, URL e chave de API, pinos, intervalos (modo teste/produção), calibração do HX711 e da bateria, endereços das sondas DS18B20, ficheiros no microSD e NTP.
+  - `telemetry.h/.cpp` — modelo `Reading`, bandeiras de estado (bitmask) e serialização JSON/CSV segundo o contrato v1.0 (sentinela `-127.00` → `null`, `weight_g`/`battery_mv` vazios quando indisponíveis, `status_flags` como array em JSON e separado por `|` em CSV).
+  - `sensors.h/.cpp` — leitura tolerante a falhas do BME280 (com deteção de leitura congelada), das duas sondas DS18B20 (por endereço físico ou índice), do HX711 (peso omitido até estar calibrado) e da bateria (ADC com divisor de tensão).
+  - `storage.h/.cpp` — persistência em microSD: arquivo permanente `apiario.csv` (formato do contrato, com rotação aos ~5 MB) e fila de envio `pendentes.csv` (JSON Lines, limpa após confirmação da API).
+  - `comms.h/.cpp` — RTC DS3231 com relógio de recurso, ligação Wi-Fi, sincronização da hora por NTP (SNTP, UTC) e envio HTTP em lotes para `POST /api/telemetry` com `X-Device-Key`.
+  - `oled.h/.cpp` — display de estado (módulos no arranque; leituras, peso, bateria e pendentes em ciclo).
+  - `apiario_tech.ino` — orquestração: lê sensores, carimba com a hora UTC, grava no SD, atualiza o OLED e envia periodicamente as leituras pendentes.
+
+- **Princípio de resiliência**: nenhuma falha individual (sensor, SD, Wi-Fi ou RTC) interrompe o ciclo — o dispositivo continua a medir e a guardar localmente, enviando quando houver ligação.
+
+- **Envio idempotente**: as leituras pendentes só são removidas da fila após confirmação da API; reenvios não criam duplicados porque o backend deduplica por `(device_id, timestamp)`.
+
+- **Compatibilidade verificada**: o JSON produzido pelo firmware corresponde ao schema Zod do endpoint de ingestão (`status_flags` aceite como array ou string).
+
+- **Nota**: o firmware compila-se no Arduino IDE/CLI com as bibliotecas Adafruit (BME280, SSD1306, GFX), OneWire, DallasTemperature, HX711 e RTClib; a validação em hardware faz-se com os sketches de `firmware/tests/` antes de carregar o sketch de produção.
+
 ---
 
 ## Estrutura atual do repositório
@@ -343,6 +362,14 @@ apiario-tech/
 │           ├── Interventions.tsx
 │           └── Alerts.tsx
 └── firmware/
+    ├── apiario_tech/
+    │   ├── apiario_tech.ino
+    │   ├── config.h
+    │   ├── telemetry.h / telemetry.cpp
+    │   ├── sensors.h / sensors.cpp
+    │   ├── storage.h / storage.cpp
+    │   ├── comms.h / comms.cpp
+    │   └── oled.h / oled.cpp
     ├── legacy/
     │   ├── README.md
     │   └── original/colmeias/...
@@ -383,6 +410,7 @@ apiario-tech/
 | `76929bd` | frontend: novas melhorias ui/ux — períodos, exportação, análise, notificações, pesquisa, acessibilidade e PWA |
 | `f710087` | docs: atualizar resumo.md para v0.5.0 (novas melhorias ui/ux) |
 | `8beda18` | backend: pipeline de ingestão de telemetria — auth de dispositivo, POST /telemetry, alertas automáticos e regenerate-key |
+| `017ebf5` | firmware: sketch de produção modular (sensores, RTC, OLED, microSD, Wi-Fi/HTTP) para envio de telemetria |
 
 ---
 
@@ -425,11 +453,12 @@ apiario-tech/
 4. Carregar `test_rtc` e validar retenção após corte
 5. Carregar `test_microsd` — **teste bloqueador**
 6. Carregar `test_hx711` e calibrar com peso conhecido
+7. Preencher `firmware/apiario_tech/config.h` (Wi-Fi, chave de API, calibrações) e carregar `apiario_tech.ino`; confirmar no monitor série as leituras (JSON) e o envio para `POST /api/telemetry`
 
 ### Desenvolvimento futuro
 
-- **Firmware de produção**: integrar Wi-Fi + HTTP no sketch base para enviar leituras para `POST /api/telemetry` com a chave `X-Device-Key` (batch + retry com buffer em microSD)
-- Firmware base integrado (sensores + RTC + OLED + microSD + CSV)
+- Validação do firmware de produção em hardware real (carregar no ESP32 e confirmar o fluxo completo sensores → microSD → API)
+- Calibração final do HX711 (tara + fator de escala) e da bateria
 - Teste contínuo de bancada
 - Testes automatizados (unitários e de integração)
 - Deploy em produção (cloud ou VPS)
